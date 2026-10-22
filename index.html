@@ -1,0 +1,1154 @@
+<!doctype html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pre-Climb Check</title>
+<meta name="theme-color" content="#1d5c41">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pre-Climb">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+/* Layout: one-column field tool — sticky app bar, section accordion, sticky action bar at the thumb. */
+:root{
+  --bg:#eef2ee; --surface:#ffffff; --sunk:#f5f7f4; --ink:#16201a; --muted:#59665d; --line:#d3dbd4;
+  --accent:#1d5c41; --accent-ink:#ffffff; --accent-soft:#dcebe2;
+  --bad:#b3261e; --bad-soft:#fbe4e1; --warn:#9a5300; --warn-soft:#fdeed9; --na:#6b746d; --na-soft:#e6e9e6;
+  --paper:#ffffff; --pen:#0d1a3a;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r:12px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1512; --surface:#18201b; --sunk:#131a16; --ink:#e7eee9; --muted:#9aa89f; --line:#2c3830;
+  --accent:#5fbf8e; --accent-ink:#0b1a12; --accent-soft:#1f3a2c;
+  --bad:#ff8a7e; --bad-soft:#3d1d1a; --warn:#f2b45e; --warn-soft:#3a2a13; --na:#a3aca5; --na-soft:#262e29;
+  color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0f1512; --surface:#18201b; --sunk:#131a16; --ink:#e7eee9; --muted:#9aa89f; --line:#2c3830;
+  --accent:#5fbf8e; --accent-ink:#0b1a12; --accent-soft:#1f3a2c;
+  --bad:#ff8a7e; --bad-soft:#3d1d1a; --warn:#f2b45e; --warn-soft:#3a2a13; --na:#a3aca5; --na-soft:#262e29;
+  color-scheme:dark; }
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--font);
+  padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* App bar */
+.bar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);
+  padding-top:env(safe-area-inset-top,0px)}
+.bar .wrap{display:flex;align-items:center;gap:8px;min-height:56px;padding-block:6px}
+.bar h1{font-size:18px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.bar h1 small{display:block;font-size:12px;font-weight:500;color:var(--muted)}
+.iconbtn{width:44px;height:44px;border:0;background:transparent;border-radius:10px;display:grid;place-items:center;flex:none}
+.iconbtn:hover{background:var(--sunk)}
+.iconbtn svg{width:24px;height:24px}
+.savestate{font-size:12px;color:var(--muted);white-space:nowrap}
+
+/* Buttons */
+.btn{min-height:48px;padding:0 18px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.block{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.link{border:0;background:none;color:var(--accent);font-weight:600;padding:6px 0;min-height:36px}
+
+/* List view */
+.listhead{display:flex;flex-direction:column;gap:12px;padding-block:16px}
+.search{width:100%;min-height:46px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:0 14px}
+.group{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+.rec{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:8px}
+.rec .t{flex:1;min-width:0}
+.rec b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec span{font-size:13px;color:var(--muted)}
+.pill{font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap;flex:none}
+.pill.go{background:var(--accent-soft);color:var(--accent)}
+.pill.cond{background:var(--warn-soft);color:var(--warn)}
+.pill.stop{background:var(--bad-soft);color:var(--bad)}
+.pill.draft{background:var(--na-soft);color:var(--na)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:22px;color:var(--muted);text-align:left}
+.empty h2{color:var(--ink);font-size:17px;margin:0 0 6px}
+.empty ol{margin:8px 0 0;padding-left:20px}
+
+/* Form */
+.chips{position:sticky;top:calc(57px + env(safe-area-inset-top,0px));z-index:15;background:var(--bg);border-bottom:1px solid var(--line)}
+.chips .wrap{display:flex;gap:6px;overflow-x:auto;padding-block:8px;scrollbar-width:none}
+.chip{flex:none;min-width:44px;height:36px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:14px;padding:0 10px;font-variant-numeric:tabular-nums}
+.chip.done{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.chip.flag{background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+.chip.err{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
+.lock{margin-top:12px;background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600}
+details.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin:12px 0;scroll-margin-top:120px}
+details.sec>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:14px;min-height:56px;cursor:pointer}
+details.sec>summary::-webkit-details-marker{display:none}
+.num{width:28px;height:28px;border-radius:8px;background:var(--sunk);display:grid;place-items:center;font-weight:800;font-size:14px;flex:none;font-variant-numeric:tabular-nums}
+summary .st{flex:1;font-weight:700;font-size:16px;min-width:0}
+summary .prog{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+summary .flags{font-size:12px;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:999px;padding:3px 8px}
+summary .chev{width:20px;height:20px;transition:transform .15s;color:var(--muted)}
+details[open]>summary .chev{transform:rotate(180deg)}
+.secbody{padding:0 14px 16px;border-top:1px solid var(--line)}
+.intro{font-size:14px;color:var(--muted);margin:12px 0 4px;max-width:62ch}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.field label,.flabel{font-size:14px;font-weight:600}
+.req::after{content:" *";color:var(--bad)}
+.inp{width:100%;min-height:46px;border:1px solid var(--line);border-radius:10px;background:var(--sunk);padding:10px 12px}
+textarea.inp{min-height:84px;resize:vertical}
+.unit{display:flex;align-items:center;gap:8px}
+.unit .inp{flex:1;min-width:0}
+.unit span{color:var(--muted);font-size:14px;width:28px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media (max-width:420px){.grid2{grid-template-columns:1fr}}
+
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--sunk)}
+.seg button{flex:1;min-height:44px;border:0;background:transparent;font-weight:700;font-size:14px;color:var(--muted);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"].good{background:var(--accent);color:var(--accent-ink)}
+.seg button[aria-pressed="true"].bad{background:var(--bad);color:#fff}
+.seg button[aria-pressed="true"].na{background:var(--na);color:var(--surface)}
+.seg button[aria-pressed="true"].neutral{background:var(--accent);color:var(--accent-ink)}
+
+.item{padding:14px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.item:last-child{border-bottom:0}
+.item .q{font-weight:600}
+.item .d{font-size:13px;color:var(--muted);margin-top:2px}
+.item.flagged{background:var(--warn-soft);margin:0 -14px;padding:14px;border-bottom-color:transparent}
+.item.missing .note{border-color:var(--bad);background:var(--bad-soft)}
+.item .note{min-height:44px}
+.item .link{align-self:flex-start;font-size:14px;min-height:32px;padding:4px 0}
+
+.gpsrow{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
+.gpsout{flex:1;min-width:0;font-family:var(--mono);font-size:13px;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;align-items:center;font-variant-numeric:tabular-nums}
+
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.ph{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--sunk);max-width:100%}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph button{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:999px;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:16px;line-height:1}
+.addph{aspect-ratio:1;border:1px dashed var(--line);border-radius:10px;background:transparent;color:var(--accent);font-weight:700;display:grid;place-items:center;font-size:13px;text-align:center;padding:6px}
+
+.decision{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.dopt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--sunk);text-align:left;width:100%}
+.dopt .dot{width:22px;height:22px;border-radius:999px;border:2px solid var(--muted);flex:none;margin-top:1px}
+.dopt b{display:block}
+.dopt span{font-size:13px;color:var(--muted)}
+.dopt[aria-pressed="true"]{border-width:2px}
+.dopt[aria-pressed="true"][data-v="climb"]{border-color:var(--accent);background:var(--accent-soft)}
+.dopt[aria-pressed="true"][data-v="climb"] .dot{border:7px solid var(--accent)}
+.dopt[aria-pressed="true"][data-v="conditions"]{border-color:var(--warn);background:var(--warn-soft)}
+.dopt[aria-pressed="true"][data-v="conditions"] .dot{border:7px solid var(--warn)}
+.dopt[aria-pressed="true"][data-v="no"]{border-color:var(--bad);background:var(--bad-soft)}
+.dopt[aria-pressed="true"][data-v="no"] .dot{border:7px solid var(--bad)}
+
+.issues{margin-top:12px;border-radius:10px;padding:12px 14px;background:var(--warn-soft);color:var(--ink);font-size:14px}
+.issues h3{margin:0 0 6px;font-size:14px;color:var(--warn)}
+.issues ul{margin:0;padding-left:18px}
+.issues li{margin:3px 0}
+.issues.clear{background:var(--accent-soft)}
+.issues.clear h3{color:var(--accent)}
+.warnline{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-weight:600;font-size:14px}
+
+.sig{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:12px;display:flex;flex-direction:column;gap:10px}
+.sig .role{font-weight:700;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.sig .role small{font-weight:500;color:var(--muted);font-size:12px}
+.sigbox{background:var(--paper);border-radius:8px;height:96px;display:grid;place-items:center;border:1px solid var(--line);overflow:hidden}
+.sigbox img{max-height:90px;max-width:100%}
+.sigbox em{color:#7a857d;font-style:normal;font-size:14px}
+.sigmeta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.actions{position:sticky;bottom:0;z-index:15;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.actions .wrap{display:flex;gap:8px;padding-block:10px}
+.actions .btn{flex:1}
+.danger-zone{margin:24px 0 32px;text-align:center}
+
+/* Settings */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin:12px 0}
+.card h2{font-size:16px;margin:0 0 4px}
+.card p{margin:4px 0 10px;color:var(--muted);font-size:14px;max-width:62ch}
+.status{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;margin:8px 0 12px}
+.status i{width:10px;height:10px;border-radius:999px;background:var(--na);flex:none}
+.status.on i{background:var(--accent)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row .btn{flex:1 1 140px}
+
+/* Sheet + toast */
+.scrim{position:fixed;inset:0;background:rgba(5,12,8,.5);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:720px;border-radius:16px 16px 0 0;max-height:92vh;overflow:auto;
+  padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet h2{margin:0 0 6px;font-size:18px}
+.sheet p{color:var(--muted);margin:4px 0 12px;font-size:14px}
+.sheet ul{padding-left:18px;margin:6px 0 14px}
+.sheet li{margin:4px 0}
+.sheet li button{border:0;background:none;color:var(--bad);text-align:left;padding:2px 0;font-weight:600;text-decoration:underline}
+.sheet .row{margin-top:12px}
+.padwrap{background:var(--paper);border-radius:10px;border:1px solid var(--line);position:relative;touch-action:none;margin-top:8px}
+.padwrap canvas{display:block;width:100%;height:220px;touch-action:none}
+.padwrap .baseline{position:absolute;left:16px;right:16px;bottom:44px;border-bottom:1px dashed #b7c0b9;pointer-events:none}
+.padwrap .x{position:absolute;left:16px;bottom:48px;color:#9aa49c;font-size:18px;pointer-events:none}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;z-index:60;max-width:calc(100% - 32px);text-align:center}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <button class="iconbtn" id="backBtn" aria-label="Back to inspections" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <h1 id="barTitle">Pre-Climb Check<small>Tree inspections stored on this phone</small></h1>
+    <span class="savestate" id="saveState"></span>
+    <button class="iconbtn" id="settingsBtn" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="listView">
+  <div class="wrap">
+    <div class="listhead">
+      <button class="btn primary block" id="newBtn">+ New inspection</button>
+      <input class="search" id="search" type="search" placeholder="Search tree ID, site or climber" aria-label="Search inspections">
+    </div>
+    <div id="recList"></div>
+  </div>
+</main>
+
+<main id="formView" hidden>
+  <nav class="chips" aria-label="Sections"><div class="wrap" id="chips"></div></nav>
+  <div class="wrap" id="formBody"></div>
+  <div class="actions"><div class="wrap" id="actions"></div></div>
+</main>
+
+<main id="settingsView" hidden>
+  <div class="wrap" id="settingsBody"></div>
+</main>
+
+<input type="file" id="photoInput" accept="image/*" multiple hidden>
+<input type="file" id="importInput" accept="application/json,.json" hidden>
+<div id="sheetHost"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="lib/jspdf.plugin.autotable.min.js"></script>
+<script>
+'use strict';
+/* ---------- Form definition ---------- */
+const YN = [['yes','Yes'],['no','No'],['na','N/A']];
+const ODN = [['ok','OK'],['defect','Defect'],['na','N/A']];
+const SECTIONS = [
+  {id:'job', n:1, title:'Job and tree details', kind:'fields', fields:[
+    {k:'site', label:'Project / site name', req:true},
+    {k:'address', label:'Site address'},
+    {k:'gps', type:'gps', label:'Location (NZTM)'},
+    {k:'when', label:'Date and time of inspection', type:'datetime-local', req:true},
+    {k:'climber', label:'Climber', req:true, half:true},
+    {k:'ground', label:'Ground person / rescuer', req:true, half:true},
+    {k:'purpose', label:'Purpose of climb', type:'choice', opts:['Roost inspection','Cavity / PRF check','Detector or camera','Nest check','Other']},
+    {k:'purposeNote', label:'Purpose details', type:'textarea', ph:'e.g. endoscope inspection of cavity at 8 m on south limb'},
+    {k:'treeId', label:'Tree ID / tag no.', req:true, half:true},
+    {k:'species', label:'Species', half:true, ph:'e.g. Kahikatea, Dacrycarpus dacrydioides'},
+    {k:'height', label:'Approx. height', type:'number', unit:'m', half:true},
+    {k:'dbh', label:'Stem diameter at 1.4 m (DBH)', type:'number', unit:'cm', half:true},
+    {k:'spread', label:'Approx. crown spread', type:'number', unit:'m', half:true},
+    {k:'workHeight', label:'Target height of work', type:'number', unit:'m', half:true},
+    {k:'vitality', label:'Tree vitality', type:'choice', opts:['Live','Declining','Dead']},
+    {k:'photos', label:'Photos', type:'photos'}
+  ]},
+  {id:'site', n:2, title:'Site and surroundings', kind:'check', scale:YN,
+    intro:'Any concerning answer needs a control written before climbing.',
+    items:[
+      ['power','Overhead power lines or services within reach of the tree, climber or kit','yes','Check NZECP 34 safe distances; contact the network owner if close.'],
+      ['public','Public, livestock or vehicles within the drop zone','yes'],
+      ['dropzone','Drop zone clear, cordoned and signed','no'],
+      ['groundcond','Uneven, steep, wet or unstable ground at the base','yes'],
+      ['snag','Water, fences, structures or other trees that could snag a fall or rescue','yes'],
+      ['access','Clear access for rescue and emergency services','no'],
+      ['comms','Mobile signal or alternative comms confirmed','no','PLB, radio or satellite messenger if no signal.'],
+      ['wind','Wind above safe working level, or gusting','yes'],
+      ['weather','Rain, ice, heat or low light expected during the climb','yes'],
+      ['insects','Wasps, bees or other stinging insects on or near the tree','yes'],
+      ['permission','Landowner permission and site induction completed','no']
+    ],
+    after:[{k:'weatherNote', label:'Weather at inspection', type:'textarea', ph:'Wind, rain, temperature'}]},
+  {id:'tree', n:3, title:'Ground-level tree assessment', kind:'check', scale:ODN,
+    intro:'Walk a full circle round the tree and view the crown from at least two sides with binoculars. Describe any defect, its location and height.',
+    items:[
+      ['roots','Roots and root plate','defect','Lifting or cracked soil, heave, severed or exposed roots, recent excavation, waterlogging'],
+      ['fungiBase','Fungi at the base or on roots','defect','Fruiting bodies at the base or on roots'],
+      ['base','Base and root collar','defect','Decay, cavities, basal wounds, loose or missing bark'],
+      ['lean','Stem: lean and form','defect','Lean (degrees, and whether recent), bulges, cracks, splits, seams'],
+      ['cavities','Stem: cavities','defect','Hollows, holes, bleeding or frass'],
+      ['decay','Stem: decay','defect','Fungal brackets, soft or punky wood (sound with a mallet if available)'],
+      ['ivy','Stem: climbers and epiphytes','defect','Vines or epiphytes hiding defects or blocking the route'],
+      ['unions','Unions and forks','defect','Included bark, cracks below forks, co-dominant stems'],
+      ['deadwood','Crown: deadwood','defect','Size and location; hung-up or broken branches'],
+      ['dieback','Crown: vitality','defect','Dieback, thin foliage, unusual leaf colour'],
+      ['failures','Crown: past failures','defect','Storm damage, tear-outs, poor old pruning cuts'],
+      ['lightning','Lightning or fire damage','defect'],
+      ['deadTree','Dead or dying tree','defect','Do not climb without specialist assessment'],
+      ['brittle','Brittle species or known branch drop','defect']
+    ],
+    after:[{k:'overall', label:'Overall tree condition', type:'choice', opts:['Good','Fair','Poor','Dangerous']}]},
+  {id:'anchor', n:4, title:'Anchor point and climbing route', kind:'check', scale:YN,
+    intro:'The anchor must be in live, sound wood and strong enough to hold the climber and a rescue load. Spikes are not to be used.',
+    before:[
+      {k:'method', label:'Access method', type:'choice', opts:['SRT','DdRT','Ladder + positioning','Other']},
+      {k:'anchorHeight', label:'Anchor height', type:'number', unit:'m', half:true},
+      {k:'anchorDia', label:'Anchor diameter', type:'number', unit:'cm', half:true},
+      {k:'anchorDesc', label:'Anchor description', type:'textarea', ph:'e.g. union of two main stems, north side'}
+    ],
+    items:[
+      ['primary','Primary anchor in live, sound wood','no'],
+      ['diameter','Anchor diameter adequate for the load','no'],
+      ['anchorClean','Anchor free of cracks, decay, included bark and deadwood above','no'],
+      ['swing','Anchor gives a swing-free route to the work position','no'],
+      ['backup','Back-up anchor identified','no'],
+      ['route','Route clear of deadwood, loose bark, wasp nests and snag points','no'],
+      ['throwline','Line can be installed and retrieved from the ground','no'],
+      ['loadtest','Anchor load-tested from the ground before ascent','no']
+    ]},
+  {id:'wildlife', n:5, title:'Wildlife and ecology', kind:'check', scale:YN,
+    intro:'Native bats and most native birds are protected under the Wildlife Act 1953. Avoid disturbing roosts or active nests during the climb.',
+    items:[
+      ['prf','Potential bat roost features on the route or anchor','yes','Cavities, cracks, loose bark, hollows'],
+      ['batSigns','Signs of bat use','yes','Guano, staining, grease marks, audible chatter, emergence seen'],
+      ['nests','Active bird nests on or near the route','yes'],
+      ['avoid','Route and anchor avoid roost features and nests','no'],
+      ['permits','Survey or permit conditions reviewed','no','e.g. DOC authority, bat roost protocols'],
+      ['biosec','Kit cleaned for biosecurity','no','Kauri dieback and myrtle rust hygiene where applicable']
+    ]},
+  {id:'rescue', n:6, title:'Rescue plan and equipment', kind:'check', scale:YN,
+    intro:'A trained, equipped rescuer must be on the ground for the whole climb.',
+    items:[
+      ['rescuer','Ground person trained in aerial rescue','no'],
+      ['rescueKit','Rescue kit on site and set up','no','Rescue line, descender, spare harness or rescue system'],
+      ['rescueMethod','Rescue method agreed','no'],
+      ['firstaid','First aid kit on site and a trained first aider present','no'],
+      ['emergency','Emergency number (111), site address and access point known','no'],
+      ['hospital','Nearest hospital noted','no'],
+      ['kitCheck','Pre-use check of climbing kit done','no','Harness, ropes, connectors, devices, helmet'],
+      ['kitDates','All kit within its inspection date','no'],
+      ['ppe','PPE worn','no','Helmet, gloves, eye protection, suitable footwear'],
+      ['commsAgreed','Climber and ground communication agreed','no','Voice, signals or radio']
+    ],
+    after:[
+      {k:'hospitalName', label:'Nearest hospital'},
+      {k:'rescueSummary', label:'Rescue method summary', type:'textarea'}
+    ]},
+  {id:'decision', n:7, title:'Decision and sign-off', kind:'decision'}
+];
+const CHECK_SECTIONS = SECTIONS.filter(s => s.kind === 'check');
+const DECISIONS = {
+  climb:{label:'Climb', pill:'go', desc:'No significant defects; controls in place'},
+  conditions:{label:'Climb with conditions', pill:'cond', desc:'The controls below must be in place first'},
+  no:{label:'Do not climb', pill:'stop', desc:'Refer for arborist assessment or use other access (MEWP, pole camera, ground survey)'}
+};
+const SIG_ROLES = [
+  {k:'climber', label:'Climber', req:true},
+  {k:'ground', label:'Ground person / rescuer', req:true},
+  {k:'supervisor', label:'Supervisor / project lead', req:false}
+];
+
+/* ---------- Helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const localNow = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
+const fmtDT = iso => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString('en-NZ', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}); };
+const ICON_CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>';
+
+function toast(msg, ms = 2600) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, ms);
+}
+
+/* NZTM2000 (NZGD2000 Transverse Mercator) forward projection */
+function toNZTM(lat, lon) {
+  const a = 6378137, f = 1 / 298.257222101, e2 = 2*f - f*f, ep2 = e2 / (1 - e2), k0 = 0.9996;
+  const p = lat * Math.PI / 180, l = (lon - 173) * Math.PI / 180;
+  const s = Math.sin(p), c = Math.cos(p), t = Math.tan(p);
+  const N = a / Math.sqrt(1 - e2*s*s), T = t*t, C = ep2*c*c, A = l*c, e4 = e2*e2, e6 = e4*e2;
+  const M = a * ((1 - e2/4 - 3*e4/64 - 5*e6/256)*p - (3*e2/8 + 3*e4/32 + 45*e6/1024)*Math.sin(2*p)
+          + (15*e4/256 + 45*e6/1024)*Math.sin(4*p) - (35*e6/3072)*Math.sin(6*p));
+  const x = k0*N*(A + (1 - T + C)*A**3/6 + (5 - 18*T + T*T + 72*C - 58*ep2)*A**5/120);
+  const y = k0*(M + N*t*(A*A/2 + (5 - T + 9*C + 4*C*C)*A**4/24 + (61 - 58*T + T*T + 600*C - 330*ep2)*A**6/720));
+  return {E: Math.round(1600000 + x), N: Math.round(10000000 + y)};
+}
+
+/* ---------- Storage (IndexedDB, on this device only) ---------- */
+const DB = (() => {
+  let dbp;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('preclimb', 1);
+    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('records', {keyPath:'id'}); d.createObjectStore('kv'); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const tx = async (store, mode, fn) => {
+    const d = await open();
+    return new Promise((res, rej) => {
+      const t = d.transaction(store, mode), req = fn(t.objectStore(store)); let out;
+      if (req) req.onsuccess = () => { out = req.result; };
+      t.oncomplete = () => res(out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+  };
+  return {
+    all: () => tx('records', 'readonly', s => s.getAll()),
+    put: r => tx('records', 'readwrite', s => s.put(r)),
+    del: id => tx('records', 'readwrite', s => s.delete(id)),
+    kget: k => tx('kv', 'readonly', s => s.get(k)),
+    kset: (k, v) => tx('kv', 'readwrite', s => s.put(v, k)),
+    kdel: k => tx('kv', 'readwrite', s => s.delete(k))
+  };
+})();
+
+let settings = {company:'Tou-Roa Ecology Ltd', climber:'', ground:''};
+let records = [];
+let cur = null;           // record being edited
+let saveTimer = null;
+const canLinkFolder = 'showDirectoryPicker' in window;
+
+/* ---------- Record logic ---------- */
+function newRecord() {
+  return {
+    id: uid(), created: new Date().toISOString(), updated: new Date().toISOString(), status: 'draft',
+    fields: {when: localNow(), climber: settings.climber || '', ground: settings.ground || ''},
+    answers: {}, photos: [], sigs: {}, decision: '', conditions: '', reason: '', postNotes: ''
+  };
+}
+const ans = (rec, sid, k) => (rec.answers[sid] || {})[k] || {};
+function isBad(sec, item, a) { return a.v && a.v === item[2]; }
+function sectionStats(rec, sec) {
+  if (sec.kind === 'check') {
+    let done = 0, flags = 0, missing = 0;
+    for (const it of sec.items) {
+      const a = ans(rec, sec.id, it[0]);
+      if (a.v) done++;
+      if (isBad(sec, it, a)) { flags++; if (!(a.note || '').trim()) missing++; }
+    }
+    return {done, total: sec.items.length, flags, missing};
+  }
+  if (sec.kind === 'fields') {
+    const req = sec.fields.filter(f => f.req), done = req.filter(f => (rec.fields[f.k] || '').toString().trim()).length;
+    return {done, total: req.length, flags: 0, missing: 0};
+  }
+  const s = rec.sigs || {};
+  let done = 0; const total = 3;
+  if (rec.decision) done++;
+  if (s.climber && s.climber.img) done++;
+  if (s.ground && s.ground.img) done++;
+  return {done, total, flags: 0, missing: 0};
+}
+function flaggedItems(rec) {
+  const out = [];
+  for (const sec of CHECK_SECTIONS) for (const it of sec.items) {
+    const a = ans(rec, sec.id, it[0]);
+    if (isBad(sec, it, a)) out.push({sec, it, a});
+  }
+  return out;
+}
+function validate(rec) {
+  const errs = [];
+  const job = SECTIONS[0];
+  for (const f of job.fields) if (f.req && !(rec.fields[f.k] || '').toString().trim()) errs.push({sid:'job', msg:`${f.label} is missing`});
+  for (const sec of CHECK_SECTIONS) {
+    const st = sectionStats(rec, sec);
+    if (st.done < st.total) errs.push({sid: sec.id, msg: `${sec.title}: ${st.total - st.done} item${st.total - st.done > 1 ? 's' : ''} not answered`});
+    if (st.missing) errs.push({sid: sec.id, msg: `${sec.title}: ${st.missing} flagged item${st.missing > 1 ? 's need' : ' needs'} a note or control`});
+  }
+  if (!rec.decision) errs.push({sid:'decision', msg:'Choose a climb decision'});
+  if (rec.decision === 'conditions' && !rec.conditions.trim()) errs.push({sid:'decision', msg:'List the conditions for climbing'});
+  if (rec.decision === 'no' && !rec.reason.trim()) errs.push({sid:'decision', msg:'Give the reason for not climbing'});
+  for (const r of SIG_ROLES.filter(r => r.req)) {
+    const s = (rec.sigs || {})[r.k] || {};
+    if (!s.img) errs.push({sid:'decision', msg:`${r.label} signature is missing`});
+    else if (!(s.name || '').trim()) errs.push({sid:'decision', msg:`${r.label} name is missing`});
+  }
+  return errs;
+}
+function dangerWarning(rec) {
+  if (rec.decision === 'no' || !rec.decision) return '';
+  const dead = ans(rec, 'tree', 'deadTree').v === 'defect';
+  const dangerous = rec.fields.overall === 'Dangerous';
+  if (dead || dangerous) return 'The tree is recorded as ' + (dangerous ? 'Dangerous' : 'dead or dying') + ' but the decision allows climbing. Check this is right.';
+  return '';
+}
+
+function scheduleSave() {
+  if (!cur) return;
+  cur.updated = new Date().toISOString();
+  $('#saveState').textContent = 'Saving…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 350);
+}
+async function saveNow() {
+  clearTimeout(saveTimer);
+  if (!cur) return;
+  try {
+    await DB.put(cur);
+    const i = records.findIndex(r => r.id === cur.id);
+    if (i >= 0) records[i] = cur; else records.push(cur);
+    $('#saveState').textContent = 'Saved';
+    if (navigator.storage && navigator.storage.persist && !saveNow._asked) { saveNow._asked = true; navigator.storage.persist().catch(() => {}); }
+  } catch (e) {
+    $('#saveState').textContent = 'Not saved';
+    toast('Could not save on this phone: ' + (e.message || e));
+  }
+}
+
+/* ---------- Views ---------- */
+function show(view) {
+  $('#listView').hidden = view !== 'list';
+  $('#formView').hidden = view !== 'form';
+  $('#settingsView').hidden = view !== 'settings';
+  $('#backBtn').hidden = view === 'list';
+  $('#settingsBtn').hidden = view !== 'list';
+  if (view !== 'form') $('#saveState').textContent = '';
+  window.scrollTo(0, 0);
+}
+function setTitle(main, sub) { $('#barTitle').innerHTML = esc(main) + (sub ? `<small>${esc(sub)}</small>` : ''); }
+
+function decisionPill(rec) {
+  if (rec.status !== 'final') return '<span class="pill draft">Draft</span>';
+  const d = DECISIONS[rec.decision];
+  return d ? `<span class="pill ${d.pill}">${esc(d.label)}</span>` : '';
+}
+function renderList() {
+  setTitle('Pre-Climb Check', 'Tree inspections stored on this phone');
+  const q = $('#search').value.trim().toLowerCase();
+  const list = records
+    .filter(r => !q || [r.fields.treeId, r.fields.site, r.fields.climber, r.fields.species].join(' ').toLowerCase().includes(q))
+    .sort((a, b) => (b.updated || '').localeCompare(a.updated || ''));
+  const host = $('#recList');
+  if (!records.length) {
+    host.innerHTML = `<div class="empty"><h2>No inspections yet</h2>
+      Tap <b>New inspection</b> at the base of the tree. Each form saves on this phone as you go.
+      <ol><li>Work through sections 1 to 6.</li><li>Record the decision and get both signatures.</li>
+      <li>Finalise to save a signed PDF to your folder.</li></ol></div>`;
+    return;
+  }
+  if (!list.length) { host.innerHTML = '<p class="intro">No inspections match that search.</p>'; return; }
+  const row = r => `<button class="rec" data-open="${r.id}">
+      <div class="t"><b>${esc(r.fields.treeId || 'Untitled tree')}${r.fields.species ? ' · ' + esc(r.fields.species) : ''}</b>
+      <span>${esc(r.fields.site || 'No site')} · ${esc(fmtDT(r.fields.when))}${r.savedTo ? ' · in folder' : ''}</span></div>
+      ${decisionPill(r)}</button>`;
+  const drafts = list.filter(r => r.status !== 'final'), finals = list.filter(r => r.status === 'final');
+  host.innerHTML = (drafts.length ? `<div class="group">In progress</div>${drafts.map(row).join('')}` : '')
+    + (finals.length ? `<div class="group">Finalised</div>${finals.map(row).join('')}` : '');
+}
+
+/* ----- Form rendering ----- */
+function fieldHTML(f, rec, locked) {
+  const v = rec.fields[f.k] ?? '';
+  const id = 'f_' + f.k, dis = locked ? ' disabled' : '';
+  const lab = `<label for="${id}" class="${f.req ? 'req' : ''}">${esc(f.label)}</label>`;
+  if (f.type === 'choice') {
+    return `<div class="field"><span class="flabel ${f.req ? 'req' : ''}">${esc(f.label)}</span><div class="seg" role="group" aria-label="${esc(f.label)}">
+      ${f.opts.map(o => `<button type="button" class="neutral" data-choice="${f.k}" data-v="${esc(o)}" aria-pressed="${v === o}"${dis}>${esc(o)}</button>`).join('')}</div></div>`;
+  }
+  if (f.type === 'textarea') return `<div class="field">${lab}<textarea class="inp" id="${id}" data-f="${f.k}" placeholder="${esc(f.ph || '')}"${dis}>${esc(v)}</textarea></div>`;
+  if (f.type === 'gps') {
+    const g = rec.fields;
+    const out = g.nztmE ? `E ${g.nztmE}  N ${g.nztmN}${g.gpsAcc ? `  ±${g.gpsAcc} m` : ''}` : 'No fix yet';
+    return `<div class="field"><span class="flabel">${esc(f.label)}</span>
+      <div class="gpsrow"><div class="gpsout" id="gpsOut">${esc(out)}</div>${locked ? '' : '<button type="button" class="btn" id="gpsBtn">Use GPS</button>'}</div>
+      <input class="inp" id="f_gridRef" data-f="gridRef" placeholder="Or type a grid reference" value="${esc(g.gridRef || '')}"${dis}></div>`;
+  }
+  if (f.type === 'photos') {
+    return `<div class="field"><span class="flabel">${esc(f.label)}</span><div class="photos" id="photoGrid">
+      ${rec.photos.map(p => `<div class="ph"><img src="${p.data}" alt="Tree photo">${locked ? '' : `<button type="button" data-delph="${p.id}" aria-label="Remove photo">×</button>`}</div>`).join('')}
+      ${locked ? '' : '<button type="button" class="addph" id="addPhoto">+ Add photo</button>'}</div></div>`;
+  }
+  const type = f.type || 'text';
+  const extra = type === 'number' ? ' inputmode="decimal" step="any" min="0"' : '';
+  const input = `<input class="inp" id="${id}" type="${type}" data-f="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph || '')}"${extra}${dis}>`;
+  return `<div class="field">${lab}${f.unit ? `<div class="unit">${input}<span>${esc(f.unit)}</span></div>` : input}</div>`;
+}
+function fieldsBlock(list, rec, locked) {
+  let html = '', buf = [];
+  const flush = () => { if (buf.length) { html += `<div class="grid2">${buf.join('')}</div>`; buf = []; } };
+  for (const f of list) { if (f.half) buf.push(fieldHTML(f, rec, locked)); else { flush(); html += fieldHTML(f, rec, locked); } }
+  flush(); return html;
+}
+function itemHTML(sec, it, rec, locked) {
+  const a = ans(rec, sec.id, it[0]), bad = isBad(sec, it, a), dis = locked ? ' disabled' : '';
+  const showNote = bad || (a.note || '').trim();
+  const cls = v => v === 'na' ? 'na' : (v === it[2] ? 'bad' : 'good');
+  return `<div class="item${bad ? ' flagged' : ''}${bad && !(a.note || '').trim() ? ' missing' : ''}" data-item="${sec.id}.${it[0]}">
+    <div><div class="q">${esc(it[1])}</div>${it[3] ? `<div class="d">${esc(it[3])}</div>` : ''}</div>
+    <div class="seg" role="group" aria-label="${esc(it[1])}">
+      ${sec.scale.map(([v, l]) => `<button type="button" class="${cls(v)}" data-ans="${sec.id}.${it[0]}" data-v="${v}" aria-pressed="${a.v === v}"${dis}>${l}</button>`).join('')}
+    </div>
+    <input class="inp note" data-note="${sec.id}.${it[0]}" value="${esc(a.note || '')}" aria-label="Note for ${esc(it[1])}"
+      placeholder="${bad ? 'Required: describe it and the control' : 'Note'}"${showNote ? '' : ' hidden'}${dis}>
+    ${!showNote && !locked ? `<button type="button" class="link" data-addnote="${sec.id}.${it[0]}">Add note</button>` : ''}
+  </div>`;
+}
+function sigHTML(role, rec, locked) {
+  const s = (rec.sigs || {})[role.k] || {};
+  return `<div class="sig" data-sig="${role.k}">
+    <div class="role">${esc(role.label)}<small>${role.req ? 'Required' : 'If required'}</small></div>
+    <input class="inp" data-signame="${role.k}" placeholder="Full name" value="${esc(s.name || '')}" aria-label="${esc(role.label)} name"${locked ? ' disabled' : ''}>
+    <div class="sigbox">${s.img ? `<img src="${s.img}" alt="${esc(role.label)} signature">` : '<em>Not signed</em>'}</div>
+    ${s.at ? `<div class="sigmeta">Signed ${esc(fmtDT(s.at))}</div>` : ''}
+    ${locked ? '' : `<div class="row"><button type="button" class="btn" data-sign="${role.k}">${s.img ? 'Sign again' : 'Sign'}</button>
+      ${s.img ? `<button type="button" class="btn" data-unsign="${role.k}">Clear</button>` : ''}</div>`}
+  </div>`;
+}
+function decisionHTML(rec, locked) {
+  const dis = locked ? ' disabled' : '';
+  return `${issuesHTML(rec)}
+    <p class="intro">If there is any doubt about the tree, anchor or conditions, do not climb. Either person can stop the climb at any time.</p>
+    <div class="decision" role="group" aria-label="Climb decision">
+      ${Object.entries(DECISIONS).map(([k, d]) => `<button type="button" class="dopt" data-decide="${k}" data-v="${k}" aria-pressed="${rec.decision === k}"${dis}>
+        <i class="dot"></i><div><b>${esc(d.label)}</b><span>${esc(d.desc)}</span></div></button>`).join('')}
+    </div>
+    <div id="dangerHost">${dangerWarning(rec) ? `<div class="warnline">${esc(dangerWarning(rec))}</div>` : ''}</div>
+    <div class="field" id="condWrap"${rec.decision === 'conditions' ? '' : ' hidden'}><label for="f_conditions" class="req">Conditions and additional controls</label>
+      <textarea class="inp" id="f_conditions" data-top="conditions"${dis}>${esc(rec.conditions)}</textarea></div>
+    <div class="field" id="reasonWrap"${rec.decision === 'no' ? '' : ' hidden'}><label for="f_reason" class="req">Reason for not climbing</label>
+      <textarea class="inp" id="f_reason" data-top="reason"${dis}>${esc(rec.reason)}</textarea></div>
+    ${SIG_ROLES.map(r => sigHTML(r, rec, locked)).join('')}
+    <div class="field"><label for="f_post">Post-climb notes</label>
+      <textarea class="inp" id="f_post" data-top="postNotes" placeholder="Incidents, near misses, changes to the tree seen aloft">${esc(rec.postNotes)}</textarea></div>`;
+}
+function issuesHTML(rec) {
+  const fl = flaggedItems(rec);
+  if (!fl.length) return `<div class="issues clear" id="issues"><h3>No items flagged</h3>Nothing in sections 2 to 6 is marked as a concern.</div>`;
+  return `<div class="issues" id="issues"><h3>${fl.length} item${fl.length > 1 ? 's' : ''} flagged</h3><ul>
+    ${fl.map(({sec, it, a}) => `<li><b>${sec.n}.</b> ${esc(it[1])}${(a.note || '').trim() ? ` — ${esc(a.note)}` : ' — <i>no control recorded</i>'}</li>`).join('')}</ul></div>`;
+}
+function sectionBody(sec, rec, locked) {
+  if (sec.kind === 'fields') return fieldsBlock(sec.fields, rec, locked);
+  if (sec.kind === 'decision') return decisionHTML(rec, locked);
+  return (sec.intro ? `<p class="intro">${esc(sec.intro)}</p>` : '')
+    + (sec.before ? fieldsBlock(sec.before, rec, locked) : '')
+    + `<div>${sec.items.map(it => itemHTML(sec, it, rec, locked)).join('')}</div>`
+    + (sec.after ? fieldsBlock(sec.after, rec, locked) : '');
+}
+function summaryInner(sec, rec) {
+  const st = sectionStats(rec, sec);
+  return `<span class="num">${sec.n}</span><span class="st">${esc(sec.title)}</span>
+    ${st.flags ? `<span class="flags">${st.flags} flagged</span>` : ''}
+    <span class="prog">${st.done}/${st.total}</span>${ICON_CHEV}`;
+}
+function renderForm(openId) {
+  const rec = cur, locked = rec.status === 'final';
+  setTitle(rec.fields.treeId || 'New inspection', rec.fields.site || (locked ? 'Finalised' : 'Draft'));
+  $('#formBody').innerHTML = (locked ? `<div class="lock">Finalised ${esc(fmtDT(rec.finalisedAt))}. Only post-climb notes can be changed.${rec.savedTo ? ` Saved as ${esc(rec.savedTo)}.` : ''}</div>` : '')
+    + SECTIONS.map(sec => `<details class="sec" id="sec_${sec.id}" data-sec="${sec.id}"${sec.id === (openId || 'job') ? ' open' : ''}>
+        <summary>${summaryInner(sec, rec)}</summary><div class="secbody">${sectionBody(sec, rec, locked)}</div></details>`).join('')
+    + `<div class="danger-zone"><button class="btn danger" id="delBtn">Delete this inspection</button></div>`;
+  $('#actions').innerHTML = locked
+    ? `<button class="btn" id="pdfBtn">Save PDF again</button><button class="btn primary" id="shareBtn">Share PDF</button>`
+    : `<button class="btn primary" id="finalBtn">Finalise and save PDF</button>`;
+  refreshStatus();
+}
+function refreshStatus() {
+  const rec = cur, errs = rec.status === 'final' ? [] : validate(rec);
+  $('#chips').innerHTML = SECTIONS.map(sec => {
+    const st = sectionStats(rec, sec);
+    const cls = st.missing ? 'err' : st.flags ? 'flag' : st.done === st.total ? 'done' : '';
+    return `<button class="chip ${cls}" data-jump="${sec.id}" aria-label="Section ${sec.n}: ${esc(sec.title)}">${sec.n}</button>`;
+  }).join('');
+  for (const sec of SECTIONS) { const s = $(`#sec_${sec.id} > summary`); if (s) s.innerHTML = summaryInner(sec, rec); }
+  const fb = $('#finalBtn'); if (fb) fb.textContent = errs.length ? `Finalise (${errs.length} to fix)` : 'Finalise and save PDF';
+}
+function refreshItem(key) {
+  const [sid, k] = key.split('.'), sec = SECTIONS.find(s => s.id === sid), it = sec.items.find(i => i[0] === k);
+  const el = $(`[data-item="${key}"]`); if (!el) return;
+  const focusNote = document.activeElement && document.activeElement.dataset.note === key;
+  el.outerHTML = itemHTML(sec, it, cur, cur.status === 'final');
+  if (focusNote) { const n = $(`[data-note="${key}"]`); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }
+}
+function refreshDecisionPanel() {
+  const iss = $('#issues'); if (iss) iss.outerHTML = issuesHTML(cur);
+  const dh = $('#dangerHost'); if (dh) dh.innerHTML = dangerWarning(cur) ? `<div class="warnline">${esc(dangerWarning(cur))}</div>` : '';
+}
+function refreshSig(k) {
+  const role = SIG_ROLES.find(r => r.k === k);
+  $(`[data-sig="${k}"]`).outerHTML = sigHTML(role, cur, cur.status === 'final');
+}
+
+function openRecord(rec, openId) { cur = rec; show('form'); renderForm(openId); $('#saveState').textContent = 'Saved'; }
+async function closeRecord() { await saveNow(); cur = null; show('list'); renderList(); }
+
+/* ----- Form events ----- */
+const fb = $('#formBody');
+fb.addEventListener('input', e => {
+  const t = e.target; if (!cur) return;
+  if (t.dataset.f) {
+    cur.fields[t.dataset.f] = t.value;
+    if (t.dataset.f === 'treeId' || t.dataset.f === 'site') setTitle(cur.fields.treeId || 'New inspection', cur.fields.site || 'Draft');
+  } else if (t.dataset.note) {
+    const [sid, k] = t.dataset.note.split('.');
+    (cur.answers[sid] ||= {})[k] = {...ans(cur, sid, k), note: t.value};
+    const el = t.closest('.item'); const a = ans(cur, sid, k);
+    const sec = SECTIONS.find(s => s.id === sid), it = sec.items.find(i => i[0] === k);
+    el.classList.toggle('missing', isBad(sec, it, a) && !t.value.trim());
+    refreshDecisionPanel();
+  } else if (t.dataset.top) {
+    if (cur.status === 'final' && t.dataset.top !== 'postNotes') return;
+    cur[t.dataset.top] = t.value;
+  } else if (t.dataset.signame) {
+    const s = (cur.sigs[t.dataset.signame] ||= {}); s.name = t.value;
+  } else return;
+  scheduleSave(); refreshStatus();
+});
+fb.addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b || !cur) return;
+  const locked = cur.status === 'final';
+  if (b.dataset.ans && !locked) {
+    const key = b.dataset.ans, [sid, k] = key.split('.');
+    const prev = ans(cur, sid, k);
+    (cur.answers[sid] ||= {})[k] = {...prev, v: prev.v === b.dataset.v ? '' : b.dataset.v};
+    refreshItem(key); refreshDecisionPanel(); scheduleSave(); refreshStatus();
+    const sec = SECTIONS.find(s => s.id === sid), it = sec.items.find(i => i[0] === k);
+    if (isBad(sec, it, ans(cur, sid, k)) && !(ans(cur, sid, k).note || '').trim()) $(`[data-note="${key}"]`)?.focus();
+  } else if (b.dataset.addnote) {
+    const n = $(`[data-note="${b.dataset.addnote}"]`); n.hidden = false; n.focus(); b.remove();
+  } else if (b.dataset.choice && !locked) {
+    cur.fields[b.dataset.choice] = cur.fields[b.dataset.choice] === b.dataset.v ? '' : b.dataset.v;
+    $$(`[data-choice="${b.dataset.choice}"]`).forEach(x => x.setAttribute('aria-pressed', cur.fields[b.dataset.choice] === x.dataset.v));
+    if (b.dataset.choice === 'overall') refreshDecisionPanel();
+    scheduleSave(); refreshStatus();
+  } else if (b.dataset.decide && !locked) {
+    cur.decision = b.dataset.decide;
+    $$('[data-decide]').forEach(x => x.setAttribute('aria-pressed', x.dataset.decide === cur.decision));
+    $('#condWrap').hidden = cur.decision !== 'conditions';
+    $('#reasonWrap').hidden = cur.decision !== 'no';
+    refreshDecisionPanel(); scheduleSave(); refreshStatus();
+  } else if (b.dataset.sign && !locked) {
+    openSignPad(b.dataset.sign);
+  } else if (b.dataset.unsign && !locked) {
+    const s = cur.sigs[b.dataset.unsign] || {}; delete s.img; delete s.at; delete s.w; delete s.h;
+    refreshSig(b.dataset.unsign); scheduleSave(); refreshStatus();
+  } else if (b.id === 'gpsBtn') {
+    getGPS(b);
+  } else if (b.id === 'addPhoto') {
+    $('#photoInput').click();
+  } else if (b.dataset.delph && !locked) {
+    cur.photos = cur.photos.filter(p => p.id !== b.dataset.delph);
+    b.closest('.ph').remove(); scheduleSave();
+  } else if (b.id === 'delBtn') {
+    confirmDelete();
+  }
+});
+$('#chips').addEventListener('click', e => {
+  const b = e.target.closest('[data-jump]'); if (!b) return;
+  const d = $(`#sec_${b.dataset.jump}`); d.open = true; d.scrollIntoView({behavior:'smooth', block:'start'});
+});
+$('#actions').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'finalBtn') finalise();
+  if (b.id === 'pdfBtn') exportPdf(false);
+  if (b.id === 'shareBtn') exportPdf(true);
+});
+
+function getGPS(btn) {
+  if (!navigator.geolocation) { toast('This browser cannot read GPS. Type the grid reference instead.'); return; }
+  btn.disabled = true; btn.textContent = 'Locating…';
+  navigator.geolocation.getCurrentPosition(pos => {
+    const {latitude, longitude, accuracy} = pos.coords, g = toNZTM(latitude, longitude);
+    Object.assign(cur.fields, {gpsLat: latitude.toFixed(6), gpsLon: longitude.toFixed(6), gpsAcc: Math.round(accuracy), nztmE: g.E, nztmN: g.N});
+    $('#gpsOut').textContent = `E ${g.E}  N ${g.N}  ±${Math.round(accuracy)} m`;
+    btn.disabled = false; btn.textContent = 'Update GPS'; scheduleSave();
+  }, err => {
+    btn.disabled = false; btn.textContent = 'Use GPS';
+    toast(err.code === 1 ? 'Location permission was refused. Allow it in your browser settings or type the grid reference.' : 'No GPS fix. Try again in the open or type the grid reference.', 4000);
+  }, {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
+}
+
+$('#photoInput').addEventListener('change', async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  for (const f of files) {
+    try { cur.photos.push({id: uid(), data: await shrinkImage(f, 1600, 0.8)}); }
+    catch { toast('Could not read one of the photos.'); }
+  }
+  const grid = $('#photoGrid'); if (grid) grid.closest('.field').outerHTML = fieldHTML(SECTIONS[0].fields.find(f => f.k === 'photos'), cur, false);
+  scheduleSave();
+});
+function shrinkImage(file, max, q) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg', q));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('bad image')); };
+    img.src = url;
+  });
+}
+
+/* ---------- Sheets ---------- */
+function openSheet(html, onClose) {
+  const host = $('#sheetHost');
+  host.innerHTML = `<div class="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  const scrim = host.firstChild;
+  scrim.addEventListener('click', e => { if (e.target === scrim) closeSheet(); });
+  closeSheet._cb = onClose;
+  return scrim.firstChild;
+}
+function closeSheet() { $('#sheetHost').innerHTML = ''; const cb = closeSheet._cb; closeSheet._cb = null; cb && cb(); }
+
+function openSignPad(roleKey) {
+  const role = SIG_ROLES.find(r => r.k === roleKey);
+  const name = (cur.sigs[roleKey] || {}).name || (roleKey === 'climber' ? cur.fields.climber : roleKey === 'ground' ? cur.fields.ground : '') || '';
+  const sh = openSheet(`<h2>${esc(role.label)} signature</h2>
+    <p>Sign with your finger in the white box. Turning the phone sideways gives more room.</p>
+    <input class="inp" id="padName" placeholder="Full name" value="${esc(name)}" aria-label="Full name">
+    <div class="padwrap"><canvas id="pad" aria-label="Signature pad"></canvas><div class="baseline"></div><div class="x">×</div></div>
+    <div class="row"><button class="btn" id="padClear">Clear</button><button class="btn" id="padCancel">Cancel</button>
+      <button class="btn primary" id="padSave" disabled>Save signature</button></div>`);
+  const cv = $('#pad', sh), ctx = cv.getContext('2d');
+  let drawing = false, last = null, inked = false;
+  function size() {
+    const r = cv.getBoundingClientRect(), dpr = Math.max(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, r.width, r.height);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0d1a3a'; ctx.lineWidth = 2.4;
+    inked = false; $('#padSave', sh).disabled = true;
+  }
+  size();
+  const onResize = () => size(); window.addEventListener('resize', onResize);
+  const pt = e => { const r = cv.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); drawing = true; last = pt(e);
+    ctx.beginPath(); ctx.arc(last.x, last.y, 1.2, 0, Math.PI * 2); ctx.fillStyle = '#0d1a3a'; ctx.fill(); });
+  cv.addEventListener('pointermove', e => {
+    if (!drawing) return; e.preventDefault();
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    for (const ev of evs) {
+      const p = pt(ev), mid = {x: (last.x + p.x) / 2, y: (last.y + p.y) / 2};
+      ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.quadraticCurveTo(last.x, last.y, mid.x, mid.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+      last = p;
+    }
+    if (!inked) { inked = true; $('#padSave', sh).disabled = false; }
+  });
+  const end = () => { drawing = false; };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  $('#padClear', sh).onclick = size;
+  $('#padCancel', sh).onclick = () => { window.removeEventListener('resize', onResize); closeSheet(); };
+  $('#padSave', sh).onclick = () => {
+    const s = (cur.sigs[roleKey] ||= {});
+    s.img = cv.toDataURL('image/png'); s.w = cv.width; s.h = cv.height; s.at = new Date().toISOString();
+    s.name = $('#padName', sh).value.trim() || s.name || '';
+    window.removeEventListener('resize', onResize); closeSheet();
+    refreshSig(roleKey); scheduleSave(); refreshStatus(); toast('Signature saved');
+  };
+}
+
+function confirmDelete() {
+  const sh = openSheet(`<h2>Delete this inspection?</h2>
+    <p>This removes it from this phone. Any PDF already saved to your folder stays there.</p>
+    <div class="row"><button class="btn" id="cdNo">Keep it</button><button class="btn danger" id="cdYes">Delete</button></div>`);
+  $('#cdNo', sh).onclick = closeSheet;
+  $('#cdYes', sh).onclick = async () => {
+    clearTimeout(saveTimer); const id = cur.id; await DB.del(id);
+    records = records.filter(r => r.id !== id); cur = null; closeSheet(); show('list'); renderList(); toast('Inspection deleted');
+  };
+}
+
+/* ---------- Finalise + export ---------- */
+async function finalise() {
+  const errs = validate(cur);
+  if (errs.length) {
+    const sh = openSheet(`<h2>${errs.length} thing${errs.length > 1 ? 's' : ''} to fix before finalising</h2>
+      <ul>${errs.map((e, i) => `<li><button data-goerr="${i}">${esc(e.msg)}</button></li>`).join('')}</ul>
+      <div class="row"><button class="btn primary" id="errOk">Back to the form</button></div>`);
+    $('#errOk', sh).onclick = closeSheet;
+    sh.addEventListener('click', e => {
+      const b = e.target.closest('[data-goerr]'); if (!b) return;
+      const sid = errs[+b.dataset.goerr].sid; closeSheet();
+      const d = $(`#sec_${sid}`); d.open = true; d.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+    return;
+  }
+  const sh = openSheet(`<h2>Finalise this inspection?</h2>
+    <p>The form locks after this, apart from post-climb notes. A signed PDF and a data file are saved ${canLinkFolder ? 'to your linked folder, or you choose where' : 'through your phone\'s share or save options'}.</p>
+    <div class="row"><button class="btn" id="fnNo">Not yet</button><button class="btn primary" id="fnYes">Finalise</button></div>`);
+  $('#fnNo', sh).onclick = closeSheet;
+  $('#fnYes', sh).onclick = async () => {
+    const dir = await getLinkedDir(true);   // ask permission while we still have the tap
+    cur.status = 'final'; cur.finalisedAt = new Date().toISOString();
+    await saveNow(); closeSheet(); renderForm('decision');
+    await exportPdf(false, dir);
+  };
+}
+
+async function getLinkedDir(ask) {
+  if (!canLinkFolder) return null;
+  let h; try { h = await DB.kget('dir'); } catch { return null; }
+  if (!h) return null;
+  try {
+    let p = await h.queryPermission({mode:'readwrite'});
+    if (p !== 'granted' && ask) p = await h.requestPermission({mode:'readwrite'});
+    return p === 'granted' ? h : null;
+  } catch { return null; }
+}
+function fileBase(rec) {
+  const d = (rec.fields.when || rec.created).slice(0, 10);
+  const clean = s => String(s || '').trim().replace(/[^\w\- ]+/g, '').replace(/\s+/g, '-').slice(0, 40);
+  return ['PreClimb', d, clean(rec.fields.treeId) || 'tree', clean(rec.fields.site)].filter(Boolean).join('_');
+}
+async function writeToDir(dir, name, blob) {
+  const fh = await dir.getFileHandle(name, {create: true}); const w = await fh.createWritable(); await w.write(blob); await w.close();
+}
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+async function shareOrDownload(blob, name) {
+  const file = new File([blob], name, {type: blob.type});
+  if (navigator.canShare && navigator.canShare({files: [file]})) {
+    try { await navigator.share({files: [file], title: name}); return 'shared'; }
+    catch (e) { if (e.name === 'AbortError') return 'cancelled'; }
+  }
+  downloadBlob(blob, name); return 'downloaded';
+}
+async function exportPdf(share, dirArg) {
+  let pdf;
+  try { pdf = buildPdf(cur); } catch (e) { console.error(e); toast('Could not build the PDF: ' + e.message, 5000); return; }
+  const base = fileBase(cur);
+  const json = new Blob([JSON.stringify(cur, null, 2)], {type: 'application/json'});
+  if (!share) {
+    const dir = dirArg !== undefined ? dirArg : await getLinkedDir(true);
+    if (dir) {
+      try {
+        await writeToDir(dir, base + '.pdf', pdf); await writeToDir(dir, base + '.json', json);
+        cur.savedTo = `${dir.name}/${base}.pdf`; await saveNow(); renderForm('decision');
+        resultSheet(`Saved to “${dir.name}”`, `${base}.pdf and its data file are in your linked folder.`, pdf, base);
+        return;
+      } catch (e) { console.warn(e); toast('Could not write to the linked folder. Choose where to save instead.', 4000); }
+    }
+    resultSheet('PDF ready', canLinkFolder
+      ? 'No folder is linked. Save it now, or link a folder in Settings so PDFs save there automatically.'
+      : 'Tap Save PDF, then choose Save to Files (iPhone) or a folder app such as Drive, and pick your inspections folder.', pdf, base);
+    return;
+  }
+  const r = await shareOrDownload(pdf, base + '.pdf');
+  if (r === 'downloaded') toast('PDF saved to Downloads');
+}
+function resultSheet(title, text, pdf, base) {
+  const sh = openSheet(`<h2>${esc(title)}</h2><p>${esc(text)}</p>
+    <div class="row"><button class="btn" id="rsDone">Done</button><button class="btn primary" id="rsShare">Save PDF</button></div>`);
+  $('#rsDone', sh).onclick = closeSheet;
+  $('#rsShare', sh).onclick = async () => { const r = await shareOrDownload(pdf, base + '.pdf'); if (r === 'downloaded') toast('PDF saved to Downloads'); if (r !== 'cancelled') closeSheet(); };
+}
+
+/* ---------- PDF ---------- */
+function buildPdf(rec) {
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit: 'mm', format: 'a4'});
+  const W = 210, M = 14, GREEN = [29, 92, 65];
+  const f = rec.fields;
+  const resultLabel = (sec, v) => (sec.scale.find(s => s[0] === v) || [, ''])[1];
+
+  // Header band
+  doc.setFillColor(...GREEN); doc.rect(0, 0, W, 24, 'F');
+  doc.setTextColor(255); doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+  doc.text('Pre-Climb Tree Inspection', M, 11);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  doc.text([settings.company || '', `Ref ${rec.id.slice(0, 8).toUpperCase()}  ·  Finalised ${fmtDT(rec.finalisedAt) || 'not finalised'}`], M, 16.5);
+  const dec = DECISIONS[rec.decision];
+  if (dec) {
+    const col = rec.decision === 'climb' ? [220, 235, 226] : rec.decision === 'conditions' ? [253, 238, 217] : [251, 228, 225];
+    const txt = rec.decision === 'climb' ? GREEN : rec.decision === 'conditions' ? [154, 83, 0] : [179, 38, 30];
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+    const w = doc.getTextWidth(dec.label.toUpperCase()) + 8;
+    doc.setFillColor(...col); doc.roundedRect(W - M - w, 8, w, 9, 2, 2, 'F');
+    doc.setTextColor(...txt); doc.text(dec.label.toUpperCase(), W - M - w / 2, 14, {align: 'center'});
+  }
+  doc.setTextColor(20);
+  let y = 30;
+
+  const heading = t => {
+    if (y > 265) { doc.addPage(); y = 16; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5); doc.setTextColor(...GREEN);
+    doc.text(t, M, y); doc.setTextColor(20); y += 2.5;
+  };
+  const base = {theme: 'grid', margin: {left: M, right: M}, styles: {fontSize: 8.6, cellPadding: 1.8, lineColor: [200, 208, 202], lineWidth: 0.2, textColor: 25, valign: 'middle'},
+    headStyles: {fillColor: [232, 239, 234], textColor: 25, fontStyle: 'bold'}};
+  const table = opts => { doc.autoTable({...base, startY: y, ...opts}); y = doc.lastAutoTable.finalY + 7; };
+  const kv = rows => table({body: rows.filter(r => r[1] !== undefined), columnStyles: {0: {cellWidth: 62, fontStyle: 'bold', fillColor: [246, 248, 246]}}});
+
+  // 1. Job
+  heading('1. Job and tree details');
+  const loc = [f.nztmE ? `NZTM E ${f.nztmE} N ${f.nztmN} (±${f.gpsAcc} m)` : '', f.gridRef || ''].filter(Boolean).join('  ·  ');
+  const num = (v, u) => v ? `${v} ${u}` : '';
+  kv([
+    ['Project / site', f.site || ''], ['Site address', f.address || ''], ['Location', loc],
+    ['Date and time', fmtDT(f.when)], ['Climber', f.climber || ''], ['Ground person / rescuer', f.ground || ''],
+    ['Purpose of climb', [f.purpose, f.purposeNote].filter(Boolean).join(' — ')],
+    ['Tree ID / tag', f.treeId || ''], ['Species', f.species || ''],
+    ['Height / DBH / spread', [num(f.height, 'm'), num(f.dbh, 'cm DBH'), num(f.spread, 'm spread')].filter(Boolean).join('  ·  ')],
+    ['Target height of work', num(f.workHeight, 'm')], ['Tree vitality', f.vitality || ''],
+    ['Photos', rec.photos.length ? `${rec.photos.length} attached at end` : 'None']
+  ]);
+
+  // 2-6 checklists
+  for (const sec of CHECK_SECTIONS) {
+    heading(`${sec.n}. ${sec.title}`);
+    if (sec.before) kv(sec.before.map(x => [x.label, x.unit ? num(f[x.k], x.unit) : (f[x.k] || '')]));
+    const body = sec.items.map(it => { const a = ans(rec, sec.id, it[0]); return [it[1], resultLabel(sec, a.v), a.note || '']; });
+    table({head: [['Check', 'Result', 'Notes / control']], body,
+      columnStyles: {0: {cellWidth: 82}, 1: {cellWidth: 18, halign: 'center', fontStyle: 'bold'}},
+      didParseCell: d => {
+        if (d.section !== 'body' || d.column.index !== 1) return;
+        const it = sec.items[d.row.index], a = ans(rec, sec.id, it[0]);
+        if (isBad(sec, it, a)) { d.cell.styles.fillColor = [253, 232, 214]; d.cell.styles.textColor = [154, 60, 0]; }
+        else if (a.v === 'na') d.cell.styles.textColor = [110, 116, 112];
+        else if (a.v) d.cell.styles.textColor = GREEN;
+      }});
+    if (sec.after) kv(sec.after.map(x => [x.label, f[x.k] || '']));
+  }
+
+  // 7. Decision
+  heading('7. Decision and sign-off');
+  const fl = flaggedItems(rec);
+  kv([
+    ['Decision', dec ? dec.label : ''],
+    ...(rec.decision === 'conditions' ? [['Conditions / controls', rec.conditions]] : []),
+    ...(rec.decision === 'no' ? [['Reason for not climbing', rec.reason]] : []),
+    ['Flagged items', fl.length ? fl.map(({sec, it}) => `${sec.n}. ${it[1]}`).join('\n') : 'None']
+  ]);
+  const sigRows = SIG_ROLES.map(r => { const s = rec.sigs[r.k] || {}; return [r.label, s.name || '', '', s.at ? fmtDT(s.at) : '']; })
+    .filter((row, i) => SIG_ROLES[i].req || (rec.sigs[SIG_ROLES[i].k] || {}).img);
+  const sigKeys = SIG_ROLES.filter(r => r.req || (rec.sigs[r.k] || {}).img).map(r => r.k);
+  table({head: [['Role', 'Name', 'Signature', 'Signed']], body: sigRows,
+    columnStyles: {0: {cellWidth: 44, fontStyle: 'bold'}, 1: {cellWidth: 44}, 2: {cellWidth: 56, minCellHeight: 20}},
+    didDrawCell: d => {
+      if (d.section !== 'body' || d.column.index !== 2) return;
+      const s = rec.sigs[sigKeys[d.row.index]] || {}; if (!s.img) return;
+      const maxW = d.cell.width - 3, maxH = d.cell.height - 3, ar = (s.w || 3) / (s.h || 1);
+      let w = maxW, h = w / ar; if (h > maxH) { h = maxH; w = h * ar; }
+      doc.addImage(s.img, 'PNG', d.cell.x + (d.cell.width - w) / 2, d.cell.y + (d.cell.height - h) / 2, w, h);
+    }});
+  kv([['Post-climb notes', rec.postNotes || '']]);
+
+  // Photos
+  if (rec.photos.length) {
+    doc.addPage(); y = 16; heading('Photos');
+    y += 3; const cw = (W - 2 * M - 6) / 2, ch = cw * 0.75; let col = 0;
+    rec.photos.forEach((p, i) => {
+      if (y + ch > 285) { doc.addPage(); y = 16; }
+      const props = doc.getImageProperties(p.data), ar = props.width / props.height;
+      let w = cw, h = w / ar; if (h > ch) { h = ch; w = h * ar; }
+      const x = M + col * (cw + 6);
+      doc.setFillColor(240, 243, 240); doc.rect(x, y, cw, ch, 'F');
+      doc.addImage(p.data, 'JPEG', x + (cw - w) / 2, y + (ch - h) / 2, w, h);
+      doc.setFontSize(8); doc.setTextColor(90); doc.text(`Photo ${i + 1}`, x, y + ch + 4);
+      col++; if (col === 2) { col = 0; y += ch + 9; }
+    });
+  }
+
+  // Footer
+  const n = doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++) {
+    doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(120);
+    doc.text(`${f.treeId || 'Tree'} · ${f.site || ''} · ${fmtDT(f.when)}`, M, 291);
+    doc.text(`Page ${i} of ${n}`, W - M, 291, {align: 'right'});
+  }
+  return doc.output('blob');
+}
+
+/* ---------- Settings ---------- */
+async function renderSettings() {
+  setTitle('Settings', 'Folder, defaults and backup');
+  const dir = canLinkFolder ? await DB.kget('dir').catch(() => null) : null;
+  let usage = '';
+  try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); usage = `${(e.usage / 1048576).toFixed(1)} MB used on this phone`; } } catch {}
+  let persisted = false; try { persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false; } catch {}
+  $('#settingsBody').innerHTML = `
+    <div class="card"><h2>Save folder</h2>
+      ${canLinkFolder ? `<p>Link a folder once and every finalised inspection saves its PDF and data file there.</p>
+        <div class="status ${dir ? 'on' : ''}"><i></i>${dir ? `Linked to “${esc(dir.name)}”` : 'No folder linked'}</div>
+        <div class="row"><button class="btn primary" id="linkDir">${dir ? 'Change folder' : 'Link a folder'}</button>${dir ? '<button class="btn" id="unlinkDir">Unlink</button>' : ''}</div>`
+      : `<p>This browser can't link a folder directly. When you finalise, tap <b>Save PDF</b> and choose <b>Save to Files</b> (iPhone) or a folder app such as Drive or Files (Android). Your phone remembers the last folder you used.</p>`}
+    </div>
+    <div class="card"><h2>Defaults for new inspections</h2>
+      <div class="field"><label for="s_company">Company name on PDFs</label><input class="inp" id="s_company" data-s="company" value="${esc(settings.company)}"></div>
+      <div class="grid2">
+        <div class="field"><label for="s_climber">Climber</label><input class="inp" id="s_climber" data-s="climber" value="${esc(settings.climber)}"></div>
+        <div class="field"><label for="s_ground">Ground person</label><input class="inp" id="s_ground" data-s="ground" value="${esc(settings.ground)}"></div>
+      </div>
+    </div>
+    <div class="card"><h2>Backup</h2>
+      <p>All ${records.length} inspection${records.length === 1 ? '' : 's'} live in this browser on this phone. ${persisted ? 'Storage is marked as permanent.' : 'Back up regularly: clearing browser data deletes them.'} ${esc(usage)}</p>
+      <div class="row"><button class="btn" id="backupBtn"${records.length ? '' : ' disabled'}>Back up all</button><button class="btn" id="importBtn">Restore from backup</button></div>
+    </div>`;
+}
+$('#settingsBody').addEventListener('input', e => {
+  const k = e.target.dataset.s; if (!k) return;
+  settings[k] = e.target.value; DB.kset('settings', settings).catch(() => {});
+});
+$('#settingsBody').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'linkDir') {
+    try { const h = await window.showDirectoryPicker({id: 'preclimb', mode: 'readwrite'}); await DB.kset('dir', h); toast(`Linked to “${h.name}”`); renderSettings(); }
+    catch (err) { if (err.name !== 'AbortError') toast('Could not link that folder: ' + err.message, 4000); }
+  } else if (b.id === 'unlinkDir') {
+    await DB.kdel('dir'); toast('Folder unlinked'); renderSettings();
+  } else if (b.id === 'backupBtn') {
+    const blob = new Blob([JSON.stringify({app: 'preclimb', version: 1, exported: new Date().toISOString(), records}, null, 2)], {type: 'application/json'});
+    const name = `PreClimb_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    const dir = await getLinkedDir(true);
+    if (dir) { try { await writeToDir(dir, name, blob); toast(`Backup saved to “${dir.name}”`); return; } catch {} }
+    const r = await shareOrDownload(blob, name); if (r === 'downloaded') toast('Backup saved to Downloads');
+  } else if (b.id === 'importBtn') {
+    $('#importInput').click();
+  }
+});
+$('#importInput').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    const list = Array.isArray(data.records) ? data.records : (data.id && data.fields ? [data] : null);
+    if (!list) throw new Error('That file is not a Pre-Climb backup or record.');
+    let added = 0, updated = 0;
+    for (const r of list) {
+      if (!r.id || !r.fields) continue;
+      const ex = records.find(x => x.id === r.id);
+      if (ex && (ex.updated || '') >= (r.updated || '')) continue;
+      r.answers ||= {}; r.photos ||= []; r.sigs ||= {};
+      await DB.put(r); ex ? updated++ : added++;
+    }
+    records = await DB.all();
+    toast(`Restored ${added} new and ${updated} updated inspection${added + updated === 1 ? '' : 's'}`, 3500); renderSettings();
+  } catch (err) { toast(err.message || 'Could not read that file.', 4000); }
+});
+
+/* ---------- Navigation + boot ---------- */
+$('#newBtn').addEventListener('click', async () => { const r = newRecord(); cur = r; await saveNow(); openRecord(r, 'job'); });
+$('#recList').addEventListener('click', e => { const b = e.target.closest('[data-open]'); if (!b) return; const r = records.find(x => x.id === b.dataset.open); if (r) openRecord(r); });
+$('#search').addEventListener('input', renderList);
+$('#backBtn').addEventListener('click', () => { if (cur) closeRecord(); else { show('list'); renderList(); } });
+$('#settingsBtn').addEventListener('click', () => { show('settings'); renderSettings(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && cur) saveNow(); });
+
+(async function boot() {
+  try {
+    const s = await DB.kget('settings'); if (s) settings = {...settings, ...s};
+    records = await DB.all();
+  } catch (e) {
+    $('#recList').innerHTML = `<div class="empty"><h2>Storage is blocked</h2>This browser is not allowing the app to save on the phone (private browsing can do this). Open it in a normal browser window.</div>`;
+    return;
+  }
+  renderList();
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
